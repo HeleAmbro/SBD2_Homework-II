@@ -1,0 +1,381 @@
+---
+title: "Ambrosioni_Hélène_Homework2"
+author: "Hélène Ambrosioni"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+<center>
+# **Homework II**
+</center>
+
+#### <u>The Enviroment, Library and Data  </u>
+
+We need some libraries
+```{r eval=FALSE}
+library(lubridate) 
+library(readxl) 
+library(ggplot2) 
+library(plotly)
+library(corrplot)
+library(dplyr)
+library(ggcorrplot)
+library(Hmisc)
+library(qgraph)
+library(readr)
+library(car)
+library(knitr)
+```
+
+```{r include=FALSE}
+bitcoin_price <- read.csv("exchanges.csv")
+data <- bitcoin_price
+```
+
+## <u> 1 Exercise </u>
+
+Answers to questions:
+
+**What period does that data cover?**
+
+```{r echo = FALSE, results='asis'}
+cat("- The period covered by the data is between ", min(data$Date), "and", max(data$Date), "\n")
+```
+
+**What data types are included in the data set?**
+
+```{r echo = FALSE, results='asis'}
+library(skimr)
+skim(data)
+```
+
+If you want a more "rough" and detailed version of the dataframe structure instead:
+
+```{r echo = FALSE, results='asis'}
+str(data)
+```
+
+**Now, we want to check and evaluate the quality of the data**
+```{r echo = FALSE}
+library(knitr)
+
+# Control of missing values for data quality
+missing_values <- sum(is.na(data))
+missing_values_table <- data.frame(Sum_Missing_Values = missing_values)
+kable(missing_values_table, caption = "Total Missing Values")
+
+# Missing values for each column
+missing_values_columns <- colSums(is.na(data))
+missing_values_columns_table <- data.frame(Column = names(missing_values_columns), Missing_Values = missing_values_columns)
+kable(missing_values_columns_table, caption = "Missing Values per Column")
+```
+
+* In this dataset, I personally rate the data very good, there is no missing data.  
+
+
+**What are the mean and median of the numerical variables included?**
+
+
+```{r echo = FALSE, results='asis'}
+
+numeric_columns <- sapply(data, is.numeric)
+
+for (column in names(data[numeric_columns])) {
+  mean_val <- mean(data[[column]], na.rm = TRUE)
+  median_val <- median(data[[column]], na.rm = TRUE)
+  cat(column, " | Mean:", mean_val, " | Median:", median_val, "\n\n")
+
+}
+```
+
+
+**Which variable has the largest variation in the observed period?**
+
+- Column with maximum deviation:
+```{r echo = FALSE, results='asis'}
+
+numeric_columns <- sapply(data, is.numeric)
+
+max_deviation <- -1
+col_with_max_deviation <- ""
+
+
+for (column in names(data[numeric_columns])) {
+  deviation <- sd(data[[column]], na.rm = TRUE)
+  if (deviation > max_deviation) {
+    max_deviation <- deviation
+    col_with_max_deviation <- column
+  }
+}
+
+cat(col_with_max_deviation, "\n\n")
+```
+- Minimum deviation:
+```{r echo=FALSE, results='asis'}
+cat( max_deviation, "\n\n")
+```
+
+
+**Which variable has the smallest variation in the observed period?**
+
+- Column with minimum deviation:
+```{r echo=FALSE, results='asis'}
+# Codice per trovare la deviazione minima
+numeric_columns <- sapply(data, is.numeric)
+
+min_deviation <- Inf
+col_with_min_deviation <- ""
+
+for (column in names(data[numeric_columns])) {
+  deviation <- sd(data[[column]], na.rm = TRUE)
+  if (deviation < min_deviation) {
+    min_deviation <- deviation
+    col_with_min_deviation <- column
+  }
+}
+
+cat(col_with_min_deviation, "\n\n")
+```
+- Minimum deviation:
+```{r echo=FALSE, results='asis'}
+cat( min_deviation, "\n\n")
+```
+
+## <u> 2 Exercise </u>
+
+**What is the mean price of the Bitcoin cryptocurrency (exchange: coinbase) for the period before and after 2017?**
+
+- The Mean price of the Bitcoin before 2017 is: 
+```{r echo=FALSE, results='asis'}
+library(lubridate)
+library(dplyr)
+# Changing the format of dates
+data$Date <- as.Date(data$Date, format = "%m/%d/%Y")
+
+data$Date <- as.Date(data$Date)
+
+
+# Create the binary variable
+data$Period <- ifelse(year(data$Date) < 2017, "Before", "After")
+# Selects only the columns 'Date' and 'btc_coinbase'
+bitcoin_data <- data[c('Date', 'btc_coinbase')]
+
+# The 'Date' column converses in date format
+bitcoin_data$Date <- as.Date(bitcoin_data$Date)
+
+# Add a new 'Period' column based on the date
+bitcoin_data <- bitcoin_data %>%
+  mutate(Period = ifelse(year(Date) < 2017, "Before", "After"))
+
+
+# Filtering data for the period before and after 2017 on Coinbase for Bitcoin
+before_2017_coinbase <- subset(data, Date < as.Date("2017/01/01") & btc_coinbase > 0)
+after_2017_coinbase <- subset(data, Date >= as.Date("2017-01-01") & btc_coinbase > 0)
+
+# Calculate the average price before and after 2017 on Coinbase for Bitcoin
+mean_before_2017_coinbase <- mean(before_2017_coinbase$btc_coinbase)
+mean_after_2017_coinbase <- mean(after_2017_coinbase$btc_coinbase)
+
+# Results
+cat( mean_before_2017_coinbase, "\n")
+
+
+```
+
+- The Mean price of the Bitcoin after 2017 is: 
+```{r echo=FALSE, results='asis'}
+
+cat( mean_after_2017_coinbase, "\n")
+```
+
+
+
+**On what day was the difference between Bitcoin and Kraken currencies largest?**
+
+-
+```{r echo=FALSE, results='asis'}
+# Calculate the difference between Bitcoin prices on Coinbase and Kraken
+data$Difference <- data$btc_coinbase - data$btc_kraken
+
+# Find the day with the largest difference
+day_of_max_difference <- data$Date[which.max(data$Difference)]
+# Format the date as dd/mm/yyyy
+formatted_date <- format(day_of_max_difference, "%d/%m/%Y")
+
+
+# Display the day with the largest difference in dd/mm/yyyy format
+cat("On day:", formatted_date, "\n")
+```
+
+
+## <u> 3 Exercise </u>
+
+Investigate the price trend of bitcoin through the use of chart plots
+
+- The trend of the Bitcoin Price, x = Date, y = Bitcoin price in dollars
+```{r echo=FALSE, results='asis'}
+library(ggplot2)
+# Date column is in the Date format
+data$Date <- as.Date(data$Date)
+
+# Line graph of bitcoin price on Coinbase
+ggplot(data, aes(x = Date, y = btc_coinbase)) +
+  geom_line(color = "red", size = 1.0) + 
+  labs(title = "The trend of the Bitcoin Price",
+       x = "Date",
+       y = "Bitcoin price in dollars") +
+  theme_minimal()
+
+```
+
+- Histogram of the Bitcoin price
+
+```{r echo=FALSE, results='asis'}
+ggplot(data, aes(x = btc_coinbase)) +
+  geom_histogram(binwidth = 500, fill = "magenta", color = "black") + 
+  labs(title = "Bitcoin price distribution on Coinbase",
+       x = "Bitcoin price in dollars",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+- Box plot of the Bitcoin price
+
+```{r echo=FALSE, results='asis'}
+ggplot(data, aes(y = btc_coinbase)) +
+  geom_boxplot(fill = "lightpink", color = "black") + 
+  labs(title = " Bitcoin price distribution on Coinbase ",
+       y = "Bitcoin price in dollars") +
+  theme_minimal()
+```
+
+- Boxplot on Bitcoin more accurate
+
+```{r echo=FALSE, results='asis'}
+ggplot(data, aes(y = btc_coinbase)) +
+  geom_boxplot(fill = "lightpink", color = "black") + 
+  labs(title = " Bitcoin price distribution on Coinbase ",
+       y = "Bitcoin price in dollars") +
+  theme_minimal() +
+  coord_cartesian(ylim = c(0, 5000))
+```
+
+
+**What can be said about the price of Bitcoin over the observed period?**
+
+## <u> 4 Exercise </u>
+
+Investigate to the relationship between the price of Bitcoin and that of traditional assets
+
+- The dependence between the Bitcoin price and the price of oil
+```{r echo=FALSE, results='asis'}
+# Plot and regression line plotting - Bitcoin and oil relationship
+ggplot(data, aes(x = oil, y = btc_coinbase)) +
+  geom_point(color = "blue") +  
+  labs(title = "Relationship between the price of Bitcoin and the price of oil",
+       x = "Oil price",
+       y = "Bitcoin price on Coinbase") +
+  theme_minimal() +
+  geom_smooth(method = "lm", se = FALSE, color = "red")  
+```
+
+**What can you tell about the dependency between these two assets?**
+
+- The dependence between the Bitcoin price and the price of gold
+```{r echo=FALSE, results='asis'}
+#Correct columns
+bitcoin_gold_data <- data[c('btc_coinbase', 'gold')]
+
+# #Plot and regression line plotting - Bitcoin and gold relationship
+ggplot(bitcoin_gold_data, aes(x = gold, y = btc_coinbase)) +
+  geom_point(color = "black") +  
+  labs(title = "Dependence between the price of Bitcoin and the price of gold",
+       x = "Gold price",
+       y = "Bitcoin price on Coinbase") +
+  theme_minimal() +
+  geom_smooth(method = "lm", se = FALSE, color = "magenta")  
+
+```
+
+
+**What can you tell about the dependency between these two assets?**
+
+
+
+Predict the price of Bitcoin (exchange = coinbase) using the price of oil, gold, and the SP500.
+```{r echo=FALSE, results='asis'}
+library(plotly)
+#Correct columns
+bitcoin_gold_data <- data[c('btc_coinbase', 'gold')]
+
+# Plotly
+plot_ly(data = bitcoin_gold_data, x = ~gold, y = ~btc_coinbase, type = 'scatter', mode = 'markers', marker = list(color = 'blue', size = 3)) %>%
+  layout(title = "Dependence between the price of Bitcoin and the price of gold",
+         xaxis = list(title = "Gold price"),
+         yaxis = list(title = "Bitcoin price on Coinbase"),
+         showlegend = FALSE) %>%
+  add_lines(x = ~gold, y = ~fitted(lm(btc_coinbase ~ gold, data = bitcoin_gold_data)), line = list(color = 'red'), inherit = FALSE)
+
+
+# Multiple regression model using the price of oil, gold and the SP500
+model <- lm(btc_coinbase ~ oil + gold + sp500, data = data)
+
+```
+
+-  Multiple regression model
+
+```{r echo=FALSE, results='asis'}
+library(car)
+# Multiple regression model
+model <- lm(btc_coinbase ~ oil + gold + sp500, data = data)
+
+# Plotting avPlots graphs for independent variables
+avPlots(model)
+```
+
+## <u> 5 Exercise </u>
+
+- Correlations between all numeric data in the data set
+
+```{r echo=FALSE, results='asis'}
+# Select only numeric columns.
+numeric_columns <- data[, sapply(data, is.numeric)]
+
+# Calculate the correlation matrix
+corr <- cor(numeric_columns, use = "complete.obs")
+numeric_columns <- data[, sapply(data, is.numeric)]
+
+```
+
+
+
+- Visualization of the lower half of the correlation matrix (method = "circle"). 
+
+```{r echo=FALSE, results='asis'}
+library(ggcorrplot)
+#Lower half of the correlation matrix
+ggcorrplot(corr, type = "lower", method = "circle")
+
+```
+
+
+- Heatmap of the correlations that emerge between the numerical variables included in the data set.
+
+```{r echo=FALSE, results='asis'}
+# Calculate correlations between numerical variables
+numeric_columns <- data[, sapply(data, is.numeric)]
+corr <- cor(numeric_columns, use = "complete.obs")
+
+# Interactive heat map with plotly
+plot_ly(z = corr, type = "heatmap") %>%
+  layout(title = "Heat map of correlations between numerical variables",
+         x = colnames(corr), y = colnames(corr),
+         xgap = 1, ygap = 1)
+
+```
